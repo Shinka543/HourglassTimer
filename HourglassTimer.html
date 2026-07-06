@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⏳ 网页版沙漏计时器</title>
+    <style>
+        :root {
+            --bg-color: #1a1d24;
+            --container-bg: #222731;
+            --text-color: #ffffff;
+            --primary-color: #3f8cff;
+            --primary-hover: #67a8ff;
+            --danger-color: #ff4d4d;
+            --danger-hover: #ff7373;
+            --sand-color: #e6b800;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--container-bg);
+            border-radius: 16px;
+            padding: 30px;
+            width: 100%;
+            max-width: 900px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 28px;
+            letter-spacing: 1px;
+        }
+
+        .layout {
+            display: flex;
+            gap: 40px;
+        }
+
+        .left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .right {
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 倒计时数字显示 */
+        .timeDisplay {
+            font-size: 54px;
+            font-weight: bold;
+            font-family: monospace;
+            margin-bottom: 20px;
+            background: rgba(0,0,0,0.2);
+            padding: 10px 30px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            min-width: 200px;
+            text-align: center;
+        }
+
+        /* 玻璃沙漏核心组件 */
+        .hourglass {
+            position: relative;
+            width: 200px;
+            height: 320px;
+            margin: 10px 0 25px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .baseTop, .baseBottom {
+            width: 180px;
+            height: 16px;
+            background: linear-gradient(#8b5a2b, #5d3a1b);
+            border-radius: 8px;
+            z-index: 2;
+        }
+
+        .glassTop, .glassBottom {
+            width: 140px;
+            height: 136px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glassTop {
+            border-bottom: none;
+            border-radius: 70px 70px 15px 15px;
+        }
+
+        .glassBottom {
+            border-top: none;
+            border-radius: 15px 15px 70px 70px;
+        }
+
+        .neck {
+            width: 24px;
+            height: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-left: 2px solid rgba(255, 255, 255, 0.2);
+            border-right: 2px solid rgba(255, 255, 255, 0.2);
+            z-index: 1;
+            position: relative;
+        }
+
+        /* 流沙动画 */
+        .stream {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 100%;
+            background-color: var(--sand-color);
+            opacity: 0;
+            z-index: 2;
+        }
+
+        .stream.flowing {
+            opacity: 0.8;
+            background: repeat-y linear-gradient(to bottom, var(--sand-color) 0%, #d4a000 50%, var(--sand-color) 100%);
+            background-size: 100% 20px;
+            animation: sandFlow 0.5s linear infinite;
+        }
+
+        @keyframes sandFlow {
+            from { background-position-y: 0; }
+            to { background-position-y: 20px; }
+        }
+
+        .sandTop {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--sand-color);
+            transition: height 0.2s linear;
+            border-radius: 0 0 10px 10px;
+        }
+
+        .sandBottom {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            background-color: var(--sand-color);
+            transition: height 0.2s linear;
+            border-radius: 0 0 70px 70px;
+        }
+
+        /* 控制区 */
+        .control {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .control label {
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .control input {
+            width: 65px;
+            font-size: 18px;
+            text-align: center;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 6px;
+            background: #2c323f;
+            color: white;
+        }
+
+        .control input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        button {
+            padding: 8px 16px;
+            font-size: 15px;
+            font-weight: 500;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        .btn-start { background-color: var(--primary-color); color: white; }
+        .btn-start:hover { background-color: var(--primary-hover); }
+        .btn-reset { background-color: #4a5568; color: white; }
+        .btn-reset:hover { background-color: #718096; }
+
+        /* 快速按钮 */
+        .quickButtons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .quickButtons button {
+            background: #2c323f;
+            color: #cbd5e0;
+            font-size: 13px;
+            padding: 6px 12px;
+            border: 1px solid #444;
+        }
+
+        .quickButtons button:hover {
+            background: #3d4657;
+            color: white;
+        }
+
+        /* 历史记录面板 */
+        .history {
+            background: rgba(0,0,0,0.15);
+            border-radius: 10px;
+            padding: 15px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .history h2 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .clear-history {
+            font-size: 11px;
+            background: transparent;
+            color: #a0aec0;
+            border: 1px solid #4a5568;
+            padding: 2px 6px;
+        }
+
+        .clear-history:hover {
+            background: rgba(255,255,255,0.05);
+            color: var(--danger-color);
+        }
+
+        .historyList {
+            list-style: none;
+            overflow-y: auto;
+            max-height: 380px;
+            flex: 1;
+        }
+
+        .historyList li {
+            background: #2c323f;
+            margin-bottom: 6px;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .history-time {
+            color: #a0aec0;
+            font-size: 11px;
+        }
+
+        .no-record {
+            text-align: center;
+            color: #718096;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        /* 手机端响应式 */
+        @media(max-width: 768px) {
+            .layout { flex-direction: column; }
+            .right { width: 100%; }
+            body { padding: 10px; }
+            .container { padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>⏳ Hourglass Timer</h1>
+    <div class="layout">
+        
+        <!-- 左侧核心计时区 -->
+        <div class="left">
+            <div class="timeDisplay" id="timeDisplay">05:00</div>
+            
+            <div class="hourglass">
+                <div class="baseTop"></div>
+                <div class="glassTop">
+                    <div class="sandTop" id="sandTop"></div>
+                </div>
+                <div class="neck">
+                    <div class="stream" id="sandStream"></div>
+                </div>
+                <div class="glassBottom">
+                    <div class="sandBottom" id="sandBottom"></div>
+                </div>
+                <div class="baseBottom"></div>
+            </div>
+            
+            <div class="control">
+                <div class="control-group">
+                    <label for="minInput">Min</label>
+                    <input type="number" id="minInput" min="0" max="99" value="5">
+                </div>
+                <div class="control-group">
+                    <label for="secInput">Sec</label>
+                    <input type="number" id="secInput" min="0" max="59" value="0">
+                </div>
+                <button id="startBtn" class="btn-start">▶ Start</button>
+                <button id="resetBtn" class="btn-reset">🔄 Reset</button>
+            </div>
+            
+            <div class="quickButtons">
+                <button data-time="60">1m</button>
+                <button data-time="180">3m</button>
+                <button data-time="300">5m</button>
+                <button data-time="600">10m</button>
+                <button data-time="1500">25m</button>
+                <button data-time="1800">30m</button>
+            </div>
+        </div>
+        
+        <!-- 右侧历史记录区 -->
+        <div class="right">
+            <div class="history">
+                <h2>
+                    <span>📜 Recent Records</span>
+                    <button id="clearHistoryBtn" class="clear-history">Clear</button>
+                </h2>
+                <ul class="historyList" id="historyList"></ul>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // 获取DOM节点
+    const $ = id => document.getElementById(id);
+    const minInput = $('minInput');
+    const secInput = $('secInput');
+    const startBtn = $('startBtn');
+    const resetBtn = $('resetBtn');
+    const timeDisplay = $('timeDisplay');
+    const sandTop = $('sandTop');
+    const sandBottom = $('sandBottom');
+    const sandStream = $('sandStream');
+    const historyList = $('historyList');
+    const clearHistoryBtn = $('clearHistoryBtn');
+
+    // 状态变量
+    let totalSeconds = 300;
+    let remainingSeconds = 300;
+    let timerInterval = null;
+    let isPaused = false;
+    let currentDurationPreset = 300; // 记录本次计时的总设定长度
+
+    // 页面初始化
+    window.addEventListener('DOMContentLoaded', () => {
+        loadHistory();
+        validateInputs();
+        updateDisplay();
+        
+        // 绑定输入框变化事件
+        minInput.addEventListener('change', handleInputChange);
+        secInput.addEventListener('change', handleInputChange);
+        
+        // 绑定按钮事件
+        startBtn.addEventListener('click', toggleTimer);
+        resetBtn.addEventListener('click', resetTimer);
+        clearHistoryBtn.addEventListener('click', clearHistory);
+        
+        // 快捷键按钮
+        document.querySelectorAll('.quickButtons button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (timerInterval) resetTimer();
+                const secs = parseInt(e.target.dataset.time);
+                minInput.value = Math.floor(secs / 60);
+                secInput.value = secs % 60;
+                handleInputChange();
+            });
+        });
+    });
+
+    // 验证并规范输入框的值
+    function validateInputs() {
+        let m = parseInt(minInput.value) || 0;
+        let s = parseInt(secInput.value) || 0;
+
+        // 严苛限制边界：分钟最大99，秒钟最大59
+        if (m > 99) m = 99;
+        if (m < 0) m = 0;
+        if (s > 59) s = 59;
+        if (s < 0) s = 0;
+
+        minInput.value = m;
+        secInput.value = s;
+        
+        return m * 60 + s;
+    }
+
+    function handleInputChange() {
+        if (!timerInterval && !isPaused) {
+            totalSeconds = validateInputs();
+            remainingSeconds = totalSeconds;
+            currentDurationPreset = totalSeconds;
+            updateDisplay();
+        }
+    }
+
+    // 更新界面（文字与流沙动画）
+    function updateDisplay() {
+        // 更新数字倒计时
+        const m = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
+        const s = (remainingSeconds % 60).toString().padStart(2, '0');
+        timeDisplay.innerText = `${m}:${s}`;
+
+        // 计算百分比
+        let ratio = 1;
+        if (totalSeconds > 0) {
+            ratio = remainingSeconds / totalSeconds;
+        }
+
+        // 上方沙子减少，下方沙子增多
+        sandTop.style.height = `${ratio * 100}%`;
+        sandBottom.style.height = `${(1 - ratio) * 100}%`;
+
+        // 处理流沙状态
+        if (timerInterval && remainingSeconds > 0) {
+            sandStream.classList.add('flowing');
+        } else {
+            sandStream.classList.remove('flowing');
+        }
+    }
+
+    // 开始 / 暂停 切换核心逻辑
+    function toggleTimer() {
+        if (timerInterval) {
+            // 当前处于运行状态 -> 执行【暂停】
+            clearInterval(timerInterval);
+            timerInterval = null;
+            isPaused = true;
+            startBtn.innerText = "▶ Resume";
+            startBtn.style.backgroundColor = "var(--primary-color)";
+            updateDisplay();
+        } else {
+            // 当前处于停止或暂停状态 -> 执行【启动 / 恢复】
+            if (!isPaused) {
+                // 如果不是由暂停恢复的，重新锁定当前输入的总时间
+                totalSeconds = validateInputs();
+                remainingSeconds = totalSeconds;
+                currentDurationPreset = totalSeconds;
+                if (totalSeconds <= 0) return;
+            }
+            
+            // 锁定输入框，避免中途篡改
+            minInput.disabled = true;
+            secInput.disabled = true;
+
+            isPaused = false;
+            startBtn.innerText = "⏸ Pause";
+            startBtn.style.backgroundColor = "var(--danger-hover)";
+            
+            // 启动定时器
+            updateDisplay();
+            timerInterval = setInterval(tick, 1000);
+        }
+    }
+
+    // 每秒滴答逻辑
+    function tick() {
+        if (remainingSeconds <= 0) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            updateDisplay();
+            timerComplete();
+            return;
+        }
+        remainingSeconds--;
+        updateDisplay();
+    }
+
+    // 倒计时结束
+    function timerComplete() {
+        // 释放输入状态
+        minInput.disabled = false;
+        secInput.disabled = false;
+        startBtn.innerText = "▶ Start";
+        startBtn.style.backgroundColor = "var(--primary-color)";
+        isPaused = false;
+
+        // 写入历史记录
+        saveRecord(currentDurationPreset);
+
+        // 声音报警器（原生 Web Audio API，无需依赖外部音频文件）
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime); // A5高音
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5); // 响半秒
+        } catch(e) {
+            console.log("Audio contexts not supported or blocked");
+        }
+
+        alert("🔔 时间到！");
+        resetTimer();
+    }
+
+    // 重置逻辑
+    function resetTimer() {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        isPaused = false;
+        
+        minInput.disabled = false;
+        secInput.disabled = false;
+        startBtn.innerText = "▶ Start";
+        startBtn.style.backgroundColor = "var(--primary-color)";
+
+        totalSeconds = validateInputs();
+        remainingSeconds = totalSeconds;
+        updateDisplay();
+    }
+
+    // --- LocalStorage 历史记录系统 ---
+    function saveRecord(duration) {
+        if (duration <= 0) return;
+        
+        const m = Math.floor(duration / 60);
+        const s = duration % 60;
+        const durationText = `${m > 0 ? m + 'm ' : ''}${s}s`;
+        
+        const now = new Date();
+        const timeText = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+
+        const record = {
+            duration: durationText,
+            time: timeText
+        };
+
+        let records = JSON.parse(localStorage.getItem('hourglass_records')) || [];
+        records.unshift(record); // 插到最前面
+        
+        if (records.length > 20) {
+            records = records.slice(0, 20); // 仅保留最近20笔
+        }
+
+        localStorage.setItem('hourglass_records', JSON.stringify(records));
+        loadHistory();
+    }
+
+    function loadHistory() {
+        historyList.innerHTML = '';
+        const records = JSON.parse(localStorage.getItem('hourglass_records')) || [];
+
+        if (records.length === 0) {
+            historyList.innerHTML = '<div class="no-record">No data recorded</div>';
+            return;
+        }
+
+        records.forEach(item => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span>✅ Completed (${item.duration})</span>
+                <span class="history-time">${item.time}</span>
+            `;
+            historyList.appendChild(li);
+        });
+    }
+
+    function clearHistory() {
+        if(confirm("确定要清空所有的最近记录吗？")) {
+            localStorage.removeItem('hourglass_records');
+            loadHistory();
+        }
+    }
+</script>
+</body>
+</html>
