@@ -129,17 +129,17 @@
             position: relative;
         }
 
-        /* 流沙动画 */
+        /* 🛠️ 流沙动画（已延长高度） */
         .stream {
             position: absolute;
             top: 0;
             left: 50%;
             transform: translateX(-50%);
             width: 4px;
-            height: 100%;
+            height: 140px; /* 👈 高度调整为 140px 直达最底部 */
             background-color: var(--sand-color);
             opacity: 0;
-            z-index: 2;
+            z-index: 1;    /* 👈 降低流沙线层级，防止挡在堆积沙子前面 */
         }
 
         .stream.flowing {
@@ -164,6 +164,7 @@
             border-radius: 0 0 10px 10px;
         }
 
+        /* 🛠️ 下半部沙堆（已提高层级） */
         .sandBottom {
             position: absolute;
             bottom: 0;
@@ -173,6 +174,7 @@
             background-color: var(--sand-color);
             transition: height 0.2s linear;
             border-radius: 0 0 70px 70px;
+            z-index: 3;   /* 👈 提高沙堆层级，使其能盖住向下延展的流沙线 */
         }
 
         /* 控制区 */
@@ -393,7 +395,6 @@
 </div>
 
 <script>
-    // 获取DOM节点
     const $ = id => document.getElementById(id);
     const minInput = $('minInput');
     const secInput = $('secInput');
@@ -406,29 +407,23 @@
     const historyList = $('historyList');
     const clearHistoryBtn = $('clearHistoryBtn');
 
-    // 状态变量
     let totalSeconds = 300;
     let remainingSeconds = 300;
     let timerInterval = null;
     let isPaused = false;
-    let currentDurationPreset = 300; // 记录本次计时的总设定长度
+    let currentDurationPreset = 300;
 
-    // 页面初始化
     window.addEventListener('DOMContentLoaded', () => {
         loadHistory();
         validateInputs();
         updateDisplay();
         
-        // 绑定输入框变化事件
         minInput.addEventListener('change', handleInputChange);
         secInput.addEventListener('change', handleInputChange);
-        
-        // 绑定按钮事件
         startBtn.addEventListener('click', toggleTimer);
         resetBtn.addEventListener('click', resetTimer);
         clearHistoryBtn.addEventListener('click', clearHistory);
         
-        // 快捷键按钮
         document.querySelectorAll('.quickButtons button').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 if (timerInterval) resetTimer();
@@ -440,12 +435,10 @@
         });
     });
 
-    // 验证并规范输入框的值
     function validateInputs() {
         let m = parseInt(minInput.value) || 0;
         let s = parseInt(secInput.value) || 0;
 
-        // 严苛限制边界：分钟最大99，秒钟最大59
         if (m > 99) m = 99;
         if (m < 0) m = 0;
         if (s > 59) s = 59;
@@ -466,24 +459,19 @@
         }
     }
 
-    // 更新界面（文字与流沙动画）
     function updateDisplay() {
-        // 更新数字倒计时
         const m = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
         const s = (remainingSeconds % 60).toString().padStart(2, '0');
         timeDisplay.innerText = `${m}:${s}`;
 
-        // 计算百分比
         let ratio = 1;
         if (totalSeconds > 0) {
             ratio = remainingSeconds / totalSeconds;
         }
 
-        // 上方沙子减少，下方沙子增多
         sandTop.style.height = `${ratio * 100}%`;
         sandBottom.style.height = `${(1 - ratio) * 100}%`;
 
-        // 处理流沙状态
         if (timerInterval && remainingSeconds > 0) {
             sandStream.classList.add('flowing');
         } else {
@@ -491,10 +479,8 @@
         }
     }
 
-    // 开始 / 暂停 切换核心逻辑
     function toggleTimer() {
         if (timerInterval) {
-            // 当前处于运行状态 -> 执行【暂停】
             clearInterval(timerInterval);
             timerInterval = null;
             isPaused = true;
@@ -502,16 +488,13 @@
             startBtn.style.backgroundColor = "var(--primary-color)";
             updateDisplay();
         } else {
-            // 当前处于停止或暂停状态 -> 执行【启动 / 恢复】
             if (!isPaused) {
-                // 如果不是由暂停恢复的，重新锁定当前输入的总时间
                 totalSeconds = validateInputs();
                 remainingSeconds = totalSeconds;
                 currentDurationPreset = totalSeconds;
                 if (totalSeconds <= 0) return;
             }
             
-            // 锁定输入框，避免中途篡改
             minInput.disabled = true;
             secInput.disabled = true;
 
@@ -519,13 +502,11 @@
             startBtn.innerText = "⏸ Pause";
             startBtn.style.backgroundColor = "var(--danger-hover)";
             
-            // 启动定时器
             updateDisplay();
             timerInterval = setInterval(tick, 1000);
         }
     }
 
-    // 每秒滴答逻辑
     function tick() {
         if (remainingSeconds <= 0) {
             clearInterval(timerInterval);
@@ -538,19 +519,15 @@
         updateDisplay();
     }
 
-    // 倒计时结束
     function timerComplete() {
-        // 释放输入状态
         minInput.disabled = false;
         secInput.disabled = false;
         startBtn.innerText = "▶ Start";
         startBtn.style.backgroundColor = "var(--primary-color)";
         isPaused = false;
 
-        // 写入历史记录
         saveRecord(currentDurationPreset);
 
-        // 声音报警器（原生 Web Audio API，无需依赖外部音频文件）
         try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = ctx.createOscillator();
@@ -558,10 +535,10 @@
             osc.connect(gain);
             gain.connect(ctx.destination);
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, ctx.currentTime); // A5高音
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
             gain.gain.setValueAtTime(0.5, ctx.currentTime);
             osc.start();
-            osc.stop(ctx.currentTime + 0.5); // 响半秒
+            osc.stop(ctx.currentTime + 0.5);
         } catch(e) {
             console.log("Audio contexts not supported or blocked");
         }
@@ -570,7 +547,6 @@
         resetTimer();
     }
 
-    // 重置逻辑
     function resetTimer() {
         clearInterval(timerInterval);
         timerInterval = null;
@@ -586,7 +562,6 @@
         updateDisplay();
     }
 
-    // --- LocalStorage 历史记录系统 ---
     function saveRecord(duration) {
         if (duration <= 0) return;
         
@@ -603,10 +578,10 @@
         };
 
         let records = JSON.parse(localStorage.getItem('hourglass_records')) || [];
-        records.unshift(record); // 插到最前面
+        records.unshift(record);
         
         if (records.length > 20) {
-            records = records.slice(0, 20); // 仅保留最近20笔
+            records = records.slice(0, 20);
         }
 
         localStorage.setItem('hourglass_records', JSON.stringify(records));
